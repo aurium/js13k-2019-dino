@@ -78,34 +78,22 @@ function getStarsData(ctx, w, h) {
 })();
 
 function tic() {
-  //sky.object3D.rotation.z += 0.01;
-  //if (sky.object3D.rotation.z >= PI) sky.object3D.rotation.z = -PI;
   var origRot = sky.object3D.rotation.z;
   var rot = (origRot>PI ? origRot-2*PI : origRot) / PI;
   var absRot = abs(rot);
-  //console.log(round(rot*100), round(origRot*100));
   if (absRot > .38  && absRot < .4) {
     ambientLight.setAttribute('color', `rgb(0,0,255)`);
-    //ambientLight.setAttribute('intensity', 0.3);
-    //console.log('Noite')
   } else if (absRot > .38  && absRot < .6) {
     let light = round(255 * (absRot-.4)/.2);
     ambientLight.setAttribute('color', `rgb(${light},${light},255)`);
-    //ambientLight.setAttribute('intensity', .3 + (absRot-.4)*3);
-    //console.log('Transição', ambientLight.getAttribute('color'), ambientLight.getAttribute('intensity'));
   } else if (absRot > .38  && absRot < .62) {
     ambientLight.setAttribute('color', `rgb(255,255,255)`);
-    //ambientLight.setAttribute('intensity', .9);
-    //console.log('Dia')
-  } else {
-    //console.log('Estável')
   }
   var intensity = (rot < 0)
       ? (rot <-.8 ? .5-((1+rot)*2.5) : 0) // anoitecer
       : (rot < .5 ? rot**2*2 : .5); // amanhecer
   sunLight.setAttribute('intensity', intensity);
   ambientLight.setAttribute('intensity', intensity+.3);
-  //console.log('sunLight', intensity)
 }
 setInterval(tic, 33);
 
@@ -145,11 +133,11 @@ function mkCactus(x, z, height, radius) {
 }
 
 function placeCactus() {
-  for (let x=0; x<40; x++) {
+  for (let x=-4600; x<-4560; x++) {
     mkCactus(x*4, round(random(1,10))*20, random(1.7,2.2), random(.16,.24))
     mkCactus(x*4, round(random(-1,-10))*20, random(1.7,2.2), random(.16,.24))
   }
-  for (let x=0; x<80; x++) {
+  for (let x=-4600; x<-4520; x++) {
     if (rnd()<.2) mkCactus(x*2, 0, random(1.7,2.2), random(.16,.24))
   }
 }
@@ -159,8 +147,8 @@ placeCactus();
 // <a-box position="4500 -400 400" width="1000" height="1000" depth="1000" color="#DB7" rotation="-30 55 55"></a-box>
 (()=> {
   for (let x=0; x<=4500; x+=500) {
-    let size = random(500, 800);
-    let z = random(400, 4000) * (rnd()<.5 ? -1 : 1);
+    let size = random(400, 700);
+    let z = random(400, 3000) * (rnd()<.5 ? -1 : 1);
     mk('box', {position:`${x} -300 ${z}`, width:size, height:size, depth:size,
                color:'#DB7', rotation:'-30 55 55'}, floor)
     mk('box', {position:`${x-5000} -300 ${z}`, width:size, height:size, depth:size,
