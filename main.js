@@ -94,6 +94,8 @@ function tic() {
       : (rot < .5 ? rot**2*2 : .5); // amanhecer
   sunLight.setAttribute('intensity', intensity);
   ambientLight.setAttribute('intensity', intensity+.3);
+  var posX = -floor.object3D.position.x;
+  placeCactus(round(posX), true);
 }
 setInterval(tic, 33);
 
@@ -132,16 +134,31 @@ function mkCactus(x, z, height, radius) {
   cactus.push({x, z, g})
 }
 
-function placeCactus() {
-  for (let x=-4600; x<-4560; x++) {
-    mkCactus(x*4, round(random(1,10))*20, random(1.7,2.2), random(.16,.24))
-    mkCactus(x*4, round(random(-1,-10))*20, random(1.7,2.2), random(.16,.24))
-  }
-  for (let x=-4600; x<-4520; x++) {
-    if (rnd()<.2) mkCactus(x*2, 0, random(1.7,2.2), random(.16,.24))
+var lastIniX = null
+function placeCactus(iniX, mustClean) {
+  if (iniX != lastIniX) {
+    console.log(iniX, mustClean, cactus.length)
+    lastIniX = iniX;
+    var newX = iniX + 120;
+    if (rnd()<.3) {
+      var rndZ = random(10, 100);
+      if (rnd()<.5) rndZ *= -1;
+      mkCactus(newX, rndZ, random(1.7,2.2), random(.16,.24));
+    }
+    if (rnd()<.05) mkCactus(newX, 0, random(1.7,2.2), random(.16,.24));
+    if (iniX > -200) placeCactus(iniX-5000);
+    cactus = cactus.filter((c)=> {
+      if ( mustClean && (
+           (c.x < iniX && c.x > iniX-1000) ||
+           (iniX == -5000 && c.x > -1000) ) ) {
+        c.g.parentNode.removeChild(c.g);
+        return false;
+      } else return true;
+    });
   }
 }
-placeCactus();
+
+for (let x=0; x>-110; x--) placeCactus(x-5000);
 
 // Place mountains
 // <a-box position="4500 -400 400" width="1000" height="1000" depth="1000" color="#DB7" rotation="-30 55 55"></a-box>
