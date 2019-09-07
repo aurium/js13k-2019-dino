@@ -1,9 +1,11 @@
+const DEBUG = !!document.location.href.match(/debug/);
 var round = Math.round;
 var rnd = Math.random;
 var random = (min, max)=> max ? rnd() * (max-min) + min : rnd() * min;
 var abs = Math.abs;
 var PI = Math.PI;
 var cactus = [];
+var log = (...args)=> DEBUG && console.log(...args);
 
 var mk = function mk(type, attrs, parent) {
   var el = document.createElement('a-'+type);
@@ -99,6 +101,7 @@ function tic() {
 }
 setInterval(tic, 33);
 
+// Draw floor texture:
 (()=> {
   var w = cFloor.width = 512;
   var h = cFloor.height = 512;
@@ -113,7 +116,7 @@ setInterval(tic, 33);
   }
 })()
 
-
+// Make and place one cactus:
 function mkCactus(x, z, height, radius) {
   var color = '#0B0';
   zNoize = z==0 ? random(-.6, .6) : z + random(-10, 10);
@@ -134,26 +137,31 @@ function mkCactus(x, z, height, radius) {
   cactus.push({x, z, g})
 }
 
+// Randomly may place cactus in front of the user, preparing the scene:
 var lastIniX = null
 function placeCactus(iniX, mustClean) {
   if (iniX != lastIniX) {
-    console.log(iniX, mustClean, cactus.length)
+    log(iniX, mustClean, cactus.length)
     lastIniX = iniX;
     var newX = iniX + 120;
-    if (rnd()<.3) {
+    if (rnd()<.1) { // Paisage cactus
       var rndZ = random(10, 100);
       if (rnd()<.5) rndZ *= -1;
-      mkCactus(newX, rndZ, random(1.7,2.2), random(.16,.24));
+      mkCactus(newX, rndZ, random(1.7,2.2), random(.15,.22));
     }
-    if (rnd()<.05) mkCactus(newX, 0, random(1.7,2.2), random(.16,.24));
-    if (iniX > -200) placeCactus(iniX-5000);
+    // Obstaculo:
+    if (rnd()<.04) mkCactus(newX, 0, random(1.7,2.2), random(.15,.22));
+    // Prepare floor repeat animation:
+    if (iniX > -120) placeCactus(iniX-5000);
+    // Clean past cactus:
     cactus = cactus.filter((c)=> {
       if ( mustClean && (
-           (c.x < iniX && c.x > iniX-1000) ||
-           (iniX == -5000 && c.x > -1000) ) ) {
+           (c.x < iniX-1 && c.x > iniX-1000) ||
+           (iniX < -4990 && c.x > -1000) ) ) {
         c.g.parentNode.removeChild(c.g);
         return false;
-      } else return true;
+      }
+      else return true;
     });
   }
 }
@@ -161,15 +169,19 @@ function placeCactus(iniX, mustClean) {
 for (let x=0; x>-110; x--) placeCactus(x-5000);
 
 // Place mountains
-// <a-box position="4500 -400 400" width="1000" height="1000" depth="1000" color="#DB7" rotation="-30 55 55"></a-box>
 (()=> {
-  for (let x=0; x<=4500; x+=500) {
-    let size = random(400, 700);
-    let z = random(400, 3000) * (rnd()<.5 ? -1 : 1);
-    mk('box', {position:`${x} -300 ${z}`, width:size, height:size, depth:size,
-               color:'#DB7', rotation:'-30 55 55'}, floor)
-    mk('box', {position:`${x-5000} -300 ${z}`, width:size, height:size, depth:size,
-               color:'#DB7', rotation:'-30 55 55'}, floor)
+  for (let x=0; x<4900; x+=600) {
+    let radius = random(150, 330);
+    let rY = random(0, 360);
+    let z = random(300, 2000) * (rnd()<.5 ? -1 : 1);
+    mk('icosahedron', {position:`${x} 0 ${z}`, radius,
+                       color:'#DB7', rotation:`0 ${rY} 0`}, floor)
+    mk('icosahedron', {position:`${x-5000} 0 ${z}`, radius,
+                       color:'#DB7', rotation:`0 ${rY} 0`}, floor)
+    mk('sphere', {position:`${x} ${-radius*.3} ${-z}`, radius, color:'#DB7',
+                 'segments-height':5, 'segments-width':5, rotation:'90 0 0'}, floor)
+    mk('sphere', {position:`${x-5000} ${-radius*.3} ${-z}`, radius, color:'#DB7',
+                 'segments-height':5, 'segments-width':5, rotation:'90 0 0'}, floor)
   }
 })();
 
@@ -209,3 +221,6 @@ data.forEach((line, y)=>
   )
 )
 
+if (DEBUG) {
+  scene.setAttribute('stats', true);
+}
