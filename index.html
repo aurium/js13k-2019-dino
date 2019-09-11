@@ -6,6 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
   <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
+  <script src="rotation-ctrl.js"></script>
 </head>
 <body>
 
@@ -17,7 +18,16 @@
     <canvas id="cCactus"></canvas>
   </a-assets>
 
-  <a-camera id="cam" far="5200" position="0 1.5 0" look-controls="enabled: false" active rotation="0 -90 0">
+  <a-camera id="cam" far="5200" position="0 1.5 0" rotation-ctrl="" look-controls="enabled: false; hmdEnabled: false" active rotation="0 -90 0">
+    <a-entity id="lifeBar"
+      line__length="start: 0, 0, 0; end: 3, 0, 0; color: #800"
+      line__pct="start: 0, 0, 0; end: 3, 0, 0; color: #F00"
+      position="-11 7 -10"
+    ></a-entity>
+    <a-text id="odometerI" value="0" font="exo2bold" width="20" color="#FFF" anchor="right" align="right" position="-10.1 6.5 -10"></a-text>
+    <a-text id="odometerD" value=".00" font="exo2bold" width="14" color="#FFF" anchor="left" align="left" position="-10.16 6.37 -10"></a-text>
+    <a-text id="odometerUnd" value="km" font="exo2bold" width="20" color="#FFF" anchor="left" align="left" position="-9.25 6.5 -10"></a-text>
+
     <a-box position="0 -.1 -.05" width=".12" height=".1" depth=".1" color="#A04"></a-box>
     <a-box position="-.033 -.06 -.092" width=".025" height=".025" depth=".025" color="#A04" rotation="-30 55 55"></a-box>
     <a-box position="+.033 -.06 -.092" width=".025" height=".025" depth=".025" color="#A04" rotation="-30 55 55"></a-box>
@@ -36,7 +46,7 @@
   <a-entity id="dino" position="0 0 0" color="#C00"></a-entity>
 
   <a-entity id="floor" position="5000 0 0"
-    animation__position="property: position.x; to: 0; dur: 900000; loop: true; easing: linear"
+    animation="property: position.x; to: 0; dur: 900000; loop: true; easing: linear; startEvents: start"
   >
     <a-plane position="0 0 0" rotation="-90 0 0" width="10000" height="10000"
              material="src:#cFloor; repeat: 900 900"></a-plane>

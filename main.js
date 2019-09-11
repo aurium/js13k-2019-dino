@@ -6,6 +6,12 @@ var abs = Math.abs;
 var PI = Math.PI;
 var cactus = [];
 var log = (...args)=> DEBUG && console.log(...args);
+var lifeBarLineLength = lifeBar.getObject3D('line__length');
+var lifeBarLinePct = lifeBar.getObject3D('line__pct');
+var distanceInc = 0;
+
+lifeBarLineLength.material.linewidth = 22;
+lifeBarLinePct.material.linewidth = 20;
 
 var mk = function mk(type, attrs, parent) {
   var el = document.createElement('a-'+type);
@@ -79,6 +85,20 @@ function getStarsData(ctx, w, h) {
   //ctx.fillRect(0,h/2, w,h);
 })();
 
+
+function init() {
+  log('Game init.');
+  floor.components.animation.config.loopComplete = ()=> {
+    distanceInc += 5000;
+    log('Animation Loop Complete. distanceInc: ' + distanceInc);
+  };
+
+  // User must call it:
+  setTimeout(()=> floor.dispatchEvent(new Event('start')), 2000);
+}
+
+scene.addEventListener('loaded', init);
+
 function tic() {
   var origRot = sky.object3D.rotation.z;
   var rot = (origRot>PI ? origRot-2*PI : origRot) / PI;
@@ -98,6 +118,11 @@ function tic() {
   ambientLight.setAttribute('intensity', intensity+.3);
   var posX = -floor.object3D.position.x;
   placeCactus(round(posX), true);
+  var dist = round((5000 - floor.object3D.position.x + distanceInc)/10).toString(); // Kilometers
+  while (dist.length < 3) dist = '0' + dist;
+  dist = dist.match(/^(.*)(..)$/);
+  odometerI.setAttribute('value', dist[1]);
+  odometerD.setAttribute('value', '.'+dist[2]);
 }
 setInterval(tic, 33);
 
@@ -141,7 +166,7 @@ function mkCactus(x, z, height, radius) {
 var lastIniX = null
 function placeCactus(iniX, mustClean) {
   if (iniX != lastIniX) {
-    log(iniX, mustClean, cactus.length)
+    //log(iniX, mustClean, cactus.length)
     lastIniX = iniX;
     var newX = iniX + 120;
     if (rnd()<.1) { // Paisage cactus
