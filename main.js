@@ -5,13 +5,28 @@ var random = (min, max)=> max ? rnd() * (max-min) + min : rnd() * min;
 var abs = Math.abs;
 var PI = Math.PI;
 var cactus = [];
+var mountains = [];
 var log = (...args)=> DEBUG && console.log(...args);
+var life = 1;
 var lifeBarLineLength = lifeBar.getObject3D('line__length');
-var lifeBarLinePct = lifeBar.getObject3D('line__pct');
+var lifeBarLinePct    = lifeBar.getObject3D('line__pct');
+var lifeBarLinePctPos = lifeBarLinePct.geometry.attributes.position;
 var distanceInc = 0;
+var gameStatus = 'PRE GAME';
+var tempCactus;
+var html = document.documentElement;
 
-lifeBarLineLength.material.linewidth = 22;
-lifeBarLinePct.material.linewidth = 20;
+setInterval(()=>
+  lifeBarLineLength.material.linewidth = lifeBarLinePct.material.linewidth = window.innerHeight/40
+, 1000);
+
+html.requestFS = html.requestFullscreen || html.mozRequestFullScreen || html.webkitRequestFullscreen;
+window.addEventListener('click', ()=> {
+  var promise = html.requestFS();
+  if (promise) promise
+    .then(()=> screen.orientation.lock('landscape-primary'))
+    .catch((err)=> void(0) /* ignore */ );
+});
 
 var mk = function mk(type, attrs, parent) {
   var el = document.createElement('a-'+type);
@@ -85,30 +100,115 @@ function getStarsData(ctx, w, h) {
   //ctx.fillRect(0,h/2, w,h);
 })();
 
-
-function init() {
+function initEnv() {
   log('Game init.');
   floor.components.animation.config.loopComplete = ()=> {
     distanceInc += 5000;
     log('Animation Loop Complete. distanceInc: ' + distanceInc);
   };
 
-  // User must call it:
-  setTimeout(()=> floor.dispatchEvent(new Event('start')), 2000);
+  browserMsg.innerHTML += '<small>Touch the screen, before it back on-line.</small>';
+
+  window.addEventListener('click', ()=> {
+    if (gameStatus == 'PRE GAME') {
+      document.body.className = 'game-on';
+      prepareGame();
+    }
+  });
+}
+scene.addEventListener('loaded', initEnv);
+
+function prepareGame() {
+  gameStatus = 'PREPARING';
+  cam.setAttribute('animation__pos', 'property: position; to: .4 1.7 0; dur: 6000');
+  cam.setAttribute('animation__far', 'property: far; to: 5100; dur: 6000');
+  ambientLight.setAttribute('animation', 'property: intensity; to: .8; dur: 2000');
+  floorPlane.setAttribute('animation', 'property: opacity; to: 1; delay: 500; dur: 2000');
+  mountains.forEach((m)=>
+    m.setAttribute('animation', 'property: opacity; to: 1; delay: 1000; dur: 2000')
+  );
+  setTimeout(()=> florLine.setAttribute('visible', false), 1000);
+  setTimeout(startGame, 6000);
 }
 
-scene.addEventListener('loaded', init);
+function endGame() {
+  window.gameRunning = false;
+  document.body.className = 'game-off post-game';
+  var dist = getDist();
+  browserMsg.innerHTML = `You are dead.<small>You ran for ${dist[1]}.${dist[2]}km.</small>`;
+  sky.dispatchEvent(new Event('pause'));
+  floor.dispatchEvent(new Event('pause'));
+
+  cam.setAttribute('animation__pos', 'property: position; to: 0 3 10; dur: 6000');
+  cam.setAttribute('animation__rot', 'property: rotation; to: 0 0 0; dur: 600');
+  cam.setAttribute('animation__far', 'property: far; to: 15; dur: 6000');
+  ambientLight.setAttribute('animation__col', 'property: color; to: #FFF; dur: 1000');
+  ambientLight.setAttribute('animation__int', 'property: intensity; to: 0; delay: 4000; dur: 2000');
+  sunLight.setAttribute('intensity', 0);
+  moonLight.setAttribute('intensity', 0);
+  floorPlane.setAttribute('animation', 'property: opacity; to: 0; delay: 2000; dur: 2000');
+  mountains.forEach((m)=>
+    m.setAttribute('animation', 'property: opacity; to: 0; delay: 1000; dur: 2500')
+  );
+  cactus.forEach((c)=>
+    c.g.setAttribute('animation', 'property: rotation; to: 0 0 0; dur: 1500')
+  );
+  setTimeout(()=> florLine.setAttribute('visible', true), 1000);
+  setTimeout(()=> dino.setAttribute('position', '0 0 0'), 500);
+  camContent.setAttribute('visible', false);
+}
+
+function startGame() {
+  gameStatus = 'STARTED';
+  dino.setAttribute('position', '0 -99 0');
+  cam.setAttribute('position', '0 1.5 0');
+  cam.setAttribute('rotation', '0 -90 0');
+  cam.setAttribute('far', 5100);
+  camContent.setAttribute('visible', true);
+  
+  window.gameRunning = true;
+
+  cactus.forEach((c)=> c.g.setAttribute('rotation', `0 ${c.g.baseRotation} 0`));
+  tempCactus.setAttribute('position', '0 -9 0');
+
+  setTimeout(()=> sky.dispatchEvent(new Event('start')), 2000);
+  setTimeout(()=> floor.dispatchEvent(new Event('start')), 2000);
+
+  window.addEventListener('click', jump);
+  window.addEventListener('keydown', jump);
+}
+
+function jump(ev) {
+  if (ev.type == 'keydown' && ev.key != "ArrowUp" && ev.key != " ") return;
+  if (!cam.jumping && window.gameRunning) {
+    cam.jumping = true;
+    cam.setAttribute('animation',
+                     'property: position.y; to: 4; dur: 500; easing: easeOutSine');
+    setTimeout(()=> {
+      cam.setAttribute('animation',
+                       'property: position.y; to: 1.5; dur: 600; easing: easeInSine');
+    }, 600);
+    setTimeout(()=> {
+      cam.jumping = false;
+      cam.removeAttribute('animation');
+    }, 1200);
+  }
+}
 
 function tic() {
+  if (!window.gameRunning) return;
   var origRot = sky.object3D.rotation.z;
   var rot = (origRot>PI ? origRot-2*PI : origRot) / PI;
   var absRot = abs(rot);
-  if (absRot > .38  && absRot < .4) {
+  //if (absRot > .38  && absRot < .4) {
+  if (absRot < .4) {
     ambientLight.setAttribute('color', `rgb(0,0,255)`);
-  } else if (absRot > .38  && absRot < .6) {
+  //} else if (absRot > .38  && absRot < .6) {
+  } else if (absRot < .6) {
     let light = round(255 * (absRot-.4)/.2);
     ambientLight.setAttribute('color', `rgb(${light},${light},255)`);
-  } else if (absRot > .38  && absRot < .62) {
+  //} else if (absRot > .38  && absRot < .62) {
+  } else {
     ambientLight.setAttribute('color', `rgb(255,255,255)`);
   }
   var intensity = (rot < 0)
@@ -118,13 +218,44 @@ function tic() {
   ambientLight.setAttribute('intensity', intensity+.3);
   var posX = -floor.object3D.position.x;
   placeCactus(round(posX), true);
-  var dist = round((5000 - floor.object3D.position.x + distanceInc)/10).toString(); // Kilometers
-  while (dist.length < 3) dist = '0' + dist;
-  dist = dist.match(/^(.*)(..)$/);
+  var dist = getDist();
   odometerI.setAttribute('value', dist[1]);
   odometerD.setAttribute('value', '.'+dist[2]);
+  if (touchACactus(posX)) {
+    life -= 0.25;
+    ambientLight.setAttribute('color', `rgb(255,0,0)`);
+    if (life <= 0) {
+      life = 0;
+      endGame();
+    }
+  }
+  lifeBarLinePctPos.array[3] = life * 3;
+  lifeBarLinePctPos.needsUpdate = true;
 }
 setInterval(tic, 33);
+
+function getDist() {
+  var dist = round((5000 - floor.object3D.position.x + distanceInc)/10).toString(); // Kilometers
+  while (dist.length < 3) dist = '0' + dist;
+  return dist.match(/^(.*)(..)$/);
+}
+
+setInterval(()=> {
+  if (life > 0) life += 0.01;
+  if (life > 1) life = 1;
+}, 1000);
+
+function touchACactus(posX) {
+  if (cam.jumping) return false;
+  var touch = false;
+  cactus.forEach((c)=> {
+    if (c.z == 0 && (posX-.2) < c.x && (posX+.2) > c.x) {
+      touch = true;
+      c.z = 9999;
+    }
+  });
+  return touch;
+}
 
 // Draw floor texture:
 (()=> {
@@ -144,7 +275,7 @@ setInterval(tic, 33);
 // Make and place one cactus:
 function mkCactus(x, z, height, radius) {
   var color = '#0B0';
-  zNoize = z==0 ? random(-.6, .6) : z + random(-10, 10);
+  zNoize = abs(z)<.1 ? random(-.6, .6) : z + random(-10, 10);
   var rotation = rnd()<.5 ? random(-80,-100) : random(80,100);
   var g = mk('entity', {position:`${x} 0 ${zNoize}`, rotation:`0 ${rotation} 0`, height, radius, color}, floor)
   mk('cylinder', {position:`0 ${height/2} 0`, height, radius:radius*1.25, color}, g)
@@ -160,6 +291,7 @@ function mkCactus(x, z, height, radius) {
   g.baseRotation = rotation
   g.baseZ = z
   cactus.push({x, z, g})
+  return g;
 }
 
 // Randomly may place cactus in front of the user, preparing the scene:
@@ -191,7 +323,12 @@ function placeCactus(iniX, mustClean) {
   }
 }
 
-for (let x=0; x>-110; x--) placeCactus(x-5000);
+for (let x=0; x>-150; x--) placeCactus(x-5000);
+
+mkCactus(random(-5000-9,-5000-4), 0, 1.8, .15);
+tempCactus = mkCactus(random(-5000+3,-5000+5), 0.01, 1.8, .15);
+mkCactus(random(-5000+6,-5000+8), 0, 1.7, .13);
+cactus.forEach((c)=> c.g.setAttribute('rotation', '0 0 0') );
 
 // Place mountains
 (()=> {
@@ -199,14 +336,14 @@ for (let x=0; x>-110; x--) placeCactus(x-5000);
     let radius = random(150, 330);
     let rY = random(0, 360);
     let z = random(300, 2000) * (rnd()<.5 ? -1 : 1);
-    mk('icosahedron', {position:`${x} 0 ${z}`, radius,
-                       color:'#DB7', rotation:`0 ${rY} 0`}, floor)
-    mk('icosahedron', {position:`${x-5000} 0 ${z}`, radius,
-                       color:'#DB7', rotation:`0 ${rY} 0`}, floor)
-    mk('sphere', {position:`${x} ${-radius*.3} ${-z}`, radius, color:'#DB7',
-                 'segments-height':5, 'segments-width':5, rotation:'90 0 0'}, floor)
-    mk('sphere', {position:`${x-5000} ${-radius*.3} ${-z}`, radius, color:'#DB7',
-                 'segments-height':5, 'segments-width':5, rotation:'90 0 0'}, floor)
+    mountains.push(mk('icosahedron', {position:`${x} 0 ${z}`, radius, opacity:0,
+                   color:'#DB7', rotation:`0 ${rY} 0`}, floor));
+    mountains.push(mk('icosahedron', {position:`${x-5000} 0 ${z}`, radius, opacity:0,
+                   color:'#DB7', rotation:`0 ${rY} 0`}, floor));
+    mountains.push(mk('sphere', {position:`${x} ${-radius*.3} ${-z}`, radius, opacity:0,
+                   color:'#DB7', 'segments-height':5, 'segments-width':5, rotation:'90 0 0'}, floor));
+    mountains.push(mk('sphere', {position:`${x-5000} ${-radius*.3} ${-z}`, radius, opacity:0,
+                   color:'#DB7', 'segments-height':5, 'segments-width':5, rotation:'90 0 0'}, floor));
   }
 })();
 
@@ -242,7 +379,7 @@ data = [
 ]
 data.forEach((line, y)=>
   line.split('').forEach((pix, x)=>
-    0//(pix == '#') ? plotPix(x, y, 0) : null
+    (pix == '#') ? plotPix(x, y, 0) : null
   )
 )
 
